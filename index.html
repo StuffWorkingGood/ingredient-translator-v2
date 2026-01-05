@@ -50,11 +50,21 @@
     .info-tag.warning{background:rgba(239,68,68,0.2);color:#fca5a5}
     .info-tag.good{background:rgba(34,197,94,0.2);color:#86efac}
     .info-tag.neutral{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7)}
+
+    #selectedProduct{display:none;margin-bottom:16px}
+    #selectedProduct.active{display:block}
+    .selected-product-card{background:linear-gradient(135deg,rgba(16,185,129,0.15) 0%,rgba(16,185,129,0.05) 100%);border:1px solid rgba(16,185,129,0.3);border-radius:20px;padding:16px;display:flex;align-items:center;gap:14px}
+    .selected-product-image{width:70px;height:70px;object-fit:contain;background:white;border-radius:12px;flex-shrink:0}
+    .selected-product-placeholder{width:70px;height:70px;background:rgba(255,255,255,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0}
+    .selected-product-info{flex:1;min-width:0}
+    .selected-product-name{font-weight:600;font-size:15px;margin-bottom:2px;color:#86efac}
+    .selected-product-brand{font-size:12px;color:rgba(255,255,255,0.5)}
+    .selected-product-clear{background:rgba(255,255,255,0.1);border:none;color:rgba(255,255,255,0.6);width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0}
     .footer{text-align:center;padding:24px 16px;color:rgba(255,255,255,0.25);font-size:11px;line-height:1.6}
 
     .scan-section{margin-bottom:16px}
-    .btn-scan{background:linear-gradient(135deg,#10b981 0%,#059669 100%);margin-top:0;margin-bottom:12px}
-    .btn-scan:hover{box-shadow:0 12px 40px rgba(16,185,129,0.35)}
+    .btn-search{background:linear-gradient(135deg,#10b981 0%,#059669 100%);margin-top:0;margin-bottom:12px}
+    .btn-search:hover{box-shadow:0 12px 40px rgba(16,185,129,0.35)}
     .or-divider{text-align:center;color:rgba(255,255,255,0.3);font-size:12px;margin:12px 0}
     #scannerModal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.95);z-index:1000;flex-direction:column}
     #scannerModal.active{display:flex}
@@ -80,11 +90,23 @@
       <div class="logo">🔬</div>
       <h1>Ingredient Translator</h1>
       <p class="subtitle">Paste any ingredients list • Tap for details</p>
-      <div class="stats-badge"><span>📚</span><span>530+ ingredients</span></div>
+      <div class="stats-badge"><span>📚</span><span>560+ ingredients</span></div>
+    </div>
+
+    <div id="selectedProduct">
+      <div class="selected-product-card">
+        <img id="selectedProductImage" class="selected-product-image" style="display:none">
+        <div id="selectedProductPlaceholder" class="selected-product-placeholder">📦</div>
+        <div class="selected-product-info">
+          <div class="selected-product-name" id="selectedProductName">Product Name</div>
+          <div class="selected-product-brand" id="selectedProductBrand">Brand</div>
+        </div>
+        <button class="selected-product-clear" onclick="clearSelectedProduct()">✕</button>
+      </div>
     </div>
     <div class="card">
       <div class="scan-section">
-        <button class="btn btn-scan" onclick="startScanner()">📷 Scan Barcode</button>
+        <button class="btn btn-search" onclick="startScanner()">🔍 Search Product</button>
         <div class="or-divider">— or paste ingredients below —</div>
       </div>
       <div class="examples-label">Try an example:</div>
@@ -4536,6 +4558,294 @@ const db = {
     found_in: ["Nuts", "Leafy greens", "Chocolate", "Supplements"],
     diet: ["Vegan", "GF", "Essential nutrient"]
   },
+  "maize": {
+    c: "grain", e: "Another word for corn. Very common globally.",
+    source: "Zea mays plant",
+    purpose: "Starch, flour, oil, sweeteners",
+    concerns: ["Usually GMO in US", "Generally safe"],
+    found_in: ["Chips", "Tortillas", "Cereals"],
+    diet: ["Vegan", "GF"]
+  },
+  "maize starch": {
+    c: "starch", e: "Corn starch. Same thing, different name.",
+    source: "Corn/maize kernels",
+    purpose: "Thickening, texture",
+    concerns: ["Usually GMO", "Generally safe"],
+    found_in: ["Sauces", "Soups", "Baked goods"],
+    diet: ["Vegan", "GF"]
+  },
+  "antioxidant": {
+    c: "preservative", e: "Prevents oxidation/spoilage.",
+    source: "Various natural or synthetic",
+    purpose: "Prevents rancidity and spoilage",
+    concerns: ["Vague term", "Usually safe"],
+    found_in: ["Oils", "Snacks", "Processed foods"],
+    diet: ["Usually vegan", "Usually GF"]
+  },
+  "antioxidants": {
+    c: "preservative", e: "Multiple antioxidants used.",
+    source: "Various sources",
+    purpose: "Prevents oxidation",
+    concerns: ["Check E-numbers if listed"],
+    found_in: ["Snacks", "Oils"],
+    diet: ["Usually vegan", "Usually GF"]
+  },
+  "olismart": {
+    c: "oil", e: "Branded high-oleic sunflower oil.",
+    source: "High-oleic sunflower oil",
+    purpose: "Healthier frying oil",
+    concerns: ["Generally healthier than regular vegetable oil"],
+    found_in: ["Chips", "Fried snacks"],
+    diet: ["Vegan", "GF"]
+  },
+  "stabiliser": {
+    c: "stabilizer", e: "British spelling of stabilizer.",
+    source: "Various gums and starches",
+    purpose: "Maintains texture",
+    concerns: ["Check specific type"],
+    found_in: ["Ice cream", "Sauces"],
+    diet: ["Check specific type"]
+  },
+  "flavouring": {
+    c: "flavor", e: "British spelling of flavoring.",
+    source: "Natural or artificial",
+    purpose: "Adds flavor",
+    concerns: ["Vague term"],
+    found_in: ["Most processed foods"],
+    diet: ["Check specific type"]
+  },
+  "colouring": {
+    c: "color", e: "British spelling of coloring.",
+    source: "Natural or artificial",
+    purpose: "Visual appeal",
+    concerns: ["Check specific type"],
+    found_in: ["Candy", "Drinks"],
+    diet: ["Check specific type"]
+  },
+  "acidity regulator": {
+    c: "acid", e: "Controls pH/acidity in food.",
+    source: "Various acids",
+    purpose: "pH control, preservation",
+    concerns: ["Generally safe"],
+    found_in: ["Drinks", "Canned foods"],
+    diet: ["Usually vegan", "Usually GF"]
+  },
+  "thickener": {
+    c: "stabilizer", e: "Makes liquids thicker.",
+    source: "Starches, gums",
+    purpose: "Texture, viscosity",
+    concerns: ["Generally safe"],
+    found_in: ["Sauces", "Soups"],
+    diet: ["Usually vegan"]
+  },
+  "raising agent": {
+    c: "leavening", e: "Makes baked goods rise.",
+    source: "Baking soda, baking powder",
+    purpose: "Creates air bubbles",
+    concerns: ["Generally safe"],
+    found_in: ["Bread", "Cakes"],
+    diet: ["Usually vegan", "Usually GF"]
+  },
+  "vegetable fat": {
+    c: "fat", e: "Fat from plants. Often palm.",
+    source: "Palm, coconut, soy",
+    purpose: "Texture, cheaper than butter",
+    concerns: ["Often palm oil (deforestation)", "May be hydrogenated"],
+    found_in: ["Chocolate", "Baked goods"],
+    diet: ["Vegan", "GF"]
+  },
+  "cocoa mass": {
+    c: "other", e: "Pure ground cocoa beans. Real chocolate.",
+    source: "Roasted cacao beans",
+    purpose: "Chocolate flavor",
+    concerns: ["Contains caffeine", "The healthy part of chocolate"],
+    found_in: ["Dark chocolate", "Quality chocolate"],
+    diet: ["Vegan", "GF"]
+  },
+  "palm fat": {
+    c: "fat", e: "Solid fat from palm fruit.",
+    source: "Palm fruit",
+    purpose: "Solid texture, cheap",
+    concerns: ["Deforestation", "Orangutan habitat destruction"],
+    found_in: ["Chocolate", "Biscuits"],
+    diet: ["Vegan", "GF", "Environmental concerns"]
+  },
+  "rapeseed oil": {
+    c: "oil", e: "Same as canola oil.",
+    source: "Rapeseed plant",
+    purpose: "Cooking oil",
+    concerns: ["Generally healthy", "Usually GMO"],
+    found_in: ["Cooking oil", "Mayo"],
+    diet: ["Vegan", "GF"]
+  },
+  "milk solids": {
+    c: "dairy", e: "Dried milk components.",
+    source: "Milk with water removed",
+    purpose: "Dairy flavor, texture",
+    concerns: ["Dairy allergen"],
+    found_in: ["Chocolate", "Baked goods"],
+    diet: ["NOT vegan", "GF", "Dairy allergen"]
+  },
+  "milk powder": {
+    c: "dairy", e: "Dried milk.",
+    source: "Dehydrated milk",
+    purpose: "Shelf-stable dairy",
+    concerns: ["Dairy allergen"],
+    found_in: ["Chocolate", "Baking"],
+    diet: ["NOT vegan", "GF", "Dairy allergen"]
+  },
+  "skimmed milk powder": {
+    c: "dairy", e: "Dried skim milk.",
+    source: "Dehydrated skim milk",
+    purpose: "Low-fat dairy",
+    concerns: ["Dairy allergen"],
+    found_in: ["Chocolate", "Baked goods"],
+    diet: ["NOT vegan", "GF", "Dairy allergen"]
+  },
+  "glucose syrup": {
+    c: "sugar", e: "Liquid sugar from starch.",
+    source: "Wheat, corn, or potato",
+    purpose: "Sweetener",
+    concerns: ["High glycemic", "Check source for GF"],
+    found_in: ["Candy", "Ice cream"],
+    diet: ["Vegan", "Check source for GF"]
+  },
+  "glucose-fructose syrup": {
+    c: "sugar", e: "European HFCS.",
+    source: "Corn or wheat starch",
+    purpose: "Cheaper sweetener",
+    concerns: ["Same as HFCS"],
+    found_in: ["Sodas", "Candy"],
+    diet: ["Vegan", "Check source for GF"]
+  },
+  "invert sugar": {
+    c: "sugar", e: "Sugar broken into glucose + fructose.",
+    source: "Processed sucrose",
+    purpose: "Sweeter, prevents crystallization",
+    concerns: ["Still sugar"],
+    found_in: ["Candy", "Baked goods"],
+    diet: ["Vegan", "GF"]
+  },
+  "e621": {
+    c: "flavor enhancer", e: "MSG.",
+    source: "Fermented sugars",
+    purpose: "Umami flavor",
+    concerns: ["Generally safe"],
+    found_in: ["Chips", "Soups", "Asian food"],
+    diet: ["Vegan", "GF"]
+  },
+  "e322": {
+    c: "emulsifier", e: "Lecithin.",
+    source: "Soy or sunflower",
+    purpose: "Emulsifier",
+    concerns: ["Soy = allergen"],
+    found_in: ["Chocolate", "Baked goods"],
+    diet: ["Vegan", "GF"]
+  },
+  "e330": {
+    c: "acid", e: "Citric acid.",
+    source: "Citrus or fermentation",
+    purpose: "Sour taste, preservative",
+    concerns: ["Safe"],
+    found_in: ["Drinks", "Candy"],
+    diet: ["Vegan", "GF"]
+  },
+  "e415": {
+    c: "stabilizer", e: "Xanthan gum.",
+    source: "Bacterial fermentation",
+    purpose: "Thickener",
+    concerns: ["May cause bloating"],
+    found_in: ["Sauces", "GF products"],
+    diet: ["Vegan", "GF"]
+  },
+  "e407": {
+    c: "stabilizer", e: "Carrageenan.",
+    source: "Red seaweed",
+    purpose: "Thickener, gelling",
+    concerns: ["Controversial", "May cause gut issues"],
+    found_in: ["Dairy alternatives", "Ice cream"],
+    diet: ["Vegan", "GF", "Controversial"]
+  },
+  "e951": {
+    c: "artificial sweetener", e: "Aspartame.",
+    source: "Synthetic",
+    purpose: "Zero-calorie sweetener",
+    concerns: ["Not for PKU"],
+    found_in: ["Diet sodas", "Sugar-free gum"],
+    diet: ["Vegan", "GF", "Avoid if PKU"]
+  },
+  "e955": {
+    c: "artificial sweetener", e: "Sucralose.",
+    source: "Modified sugar",
+    purpose: "Zero-calorie sweetener",
+    concerns: ["May affect gut bacteria"],
+    found_in: ["Diet products"],
+    diet: ["Vegan", "GF"]
+  },
+  "e960": {
+    c: "natural sweetener", e: "Stevia.",
+    source: "Stevia plant",
+    purpose: "Natural zero-calorie sweetener",
+    concerns: ["Can taste bitter"],
+    found_in: ["Health foods"],
+    diet: ["Vegan", "GF", "Keto-friendly"]
+  },
+  "carbon dioxide": {
+    c: "other", e: "CO2. Makes drinks fizzy.",
+    source: "Byproduct of fermentation or industrial production",
+    purpose: "Carbonation, creates bubbles and fizz",
+    concerns: ["Completely safe", "Naturally in the air we breathe", "Gives sodas their fizz"],
+    found_in: ["Sodas", "Sparkling water", "Beer", "Champagne"],
+    diet: ["Vegan", "GF"]
+  },
+  "co2": {
+    c: "other", e: "Carbon dioxide. Carbonation gas.",
+    source: "Same as carbon dioxide",
+    purpose: "Makes drinks fizzy",
+    concerns: ["Safe"],
+    found_in: ["Carbonated drinks"],
+    diet: ["Vegan", "GF"]
+  },
+  "nitrogen": {
+    c: "other", e: "N2 gas. Creamy texture in drinks.",
+    source: "Air (78% nitrogen)",
+    purpose: "Smaller bubbles, creamy mouthfeel",
+    concerns: ["Completely safe", "Used in nitro coffee and beer"],
+    found_in: ["Nitro cold brew", "Guinness", "Some chips bags"],
+    diet: ["Vegan", "GF"]
+  },
+  "oxygen": {
+    c: "other", e: "O2. Packaging gas.",
+    source: "Air",
+    purpose: "Sometimes removed to prevent oxidation",
+    concerns: ["Completely safe", "We breathe it"],
+    found_in: ["Modified atmosphere packaging"],
+    diet: ["Vegan", "GF"]
+  },
+  "carbonated water": {
+    c: "water", e: "Water with CO2 dissolved. Fizzy water.",
+    source: "Water + carbon dioxide under pressure",
+    purpose: "Base for sodas, refreshing fizz",
+    concerns: ["Safe", "Slightly acidic", "May affect tooth enamel with excess"],
+    found_in: ["Sodas", "Sparkling water", "Tonic water"],
+    diet: ["Vegan", "GF"]
+  },
+  "sparkling water": {
+    c: "water", e: "Same as carbonated water.",
+    source: "Water + CO2",
+    purpose: "Fizzy refreshment",
+    concerns: ["Safe", "Zero calories"],
+    found_in: ["Beverages"],
+    diet: ["Vegan", "GF"]
+  },
+  "soda water": {
+    c: "water", e: "Carbonated water, sometimes with minerals.",
+    source: "Water + CO2 + optional minerals",
+    purpose: "Mixer, refreshment",
+    concerns: ["Safe"],
+    found_in: ["Mixers", "Beverages"],
+    diet: ["Vegan", "GF"]
+  },
 };
 
 const styles = {
@@ -4715,16 +5025,91 @@ function showManualEntry() {
   document.querySelector('.scanner-hint').style.display = 'none';
   document.getElementById('scannerStatus').innerHTML = 
     '<div style="padding:20px;text-align:center">' +
-    '<div style="font-size:40px;margin-bottom:16px">📦</div>' +
-    '<div style="margin-bottom:16px;color:rgba(255,255,255,0.7)">Enter the barcode number from the package</div>' +
-    '<input type="text" id="manualBarcode" inputmode="numeric" placeholder="e.g. 049000006346" ' +
-    'style="padding:14px;border-radius:10px;border:2px solid #10b981;width:220px;font-size:18px;text-align:center;background:rgba(0,0,0,0.3);color:white">' +
-    '<br><button onclick="handleBarcode(document.getElementById(\'manualBarcode\').value)" ' +
-    'style="margin-top:14px;padding:14px 32px;border-radius:10px;border:none;background:#10b981;color:white;font-weight:600;font-size:15px">🔍 Look Up Product</button>' +
+    '<div style="font-size:40px;margin-bottom:12px">🔍</div>' +
+    '<div style="margin-bottom:12px;color:rgba(255,255,255,0.7);font-weight:600">Search by Product Name</div>' +
+    '<input type="text" id="productSearch" placeholder="e.g. Doritos, Diet Coke, Oreos" ' +
+    'style="padding:14px;border-radius:10px;border:2px solid #10b981;width:260px;font-size:16px;text-align:center;background:rgba(0,0,0,0.3);color:white" ' +
+    'onkeypress="if(event.key===\'Enter\')searchProduct()">' +
+    '<br><button onclick="searchProduct()" ' +
+    'style="margin-top:12px;padding:12px 28px;border-radius:10px;border:none;background:#10b981;color:white;font-weight:600;font-size:15px">🔍 Search</button>' +
+    '<div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.1)">' +
+    '<div style="margin-bottom:10px;color:rgba(255,255,255,0.5);font-size:13px">Or enter barcode number:</div>' +
+    '<input type="text" id="manualBarcode" inputmode="numeric" placeholder="049000006346" ' +
+    'style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);width:180px;font-size:14px;text-align:center;background:rgba(0,0,0,0.3);color:white" ' +
+    'onkeypress="if(event.key===\'Enter\')handleBarcode(this.value)">' +
+    '<button onclick="handleBarcode(document.getElementById(\'manualBarcode\').value)" ' +
+    'style="margin-left:8px;padding:10px 16px;border-radius:8px;border:none;background:rgba(255,255,255,0.15);color:white;font-size:14px">Go</button>' +
+    '</div>' +
     '<br><button onclick="tryCamera()" ' +
-    'style="margin-top:12px;padding:10px 20px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.6);font-size:13px">📷 Try Camera Instead</button>' +
-    '<div style="margin-top:20px;font-size:12px;color:rgba(255,255,255,0.4)">Tip: The barcode number is usually below the barcode lines</div>' +
+    'style="margin-top:8px;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.5);font-size:12px">📷 Try Camera</button>' +
     '</div>';
+}
+
+function searchProduct() {
+  var query = document.getElementById('productSearch').value.trim();
+  if (!query) return;
+  
+  document.getElementById('scannerStatus').innerHTML = 
+    '<div style="padding:40px;text-align:center">' +
+    '<div style="font-size:32px;margin-bottom:12px">🔍</div>' +
+    '<div style="color:rgba(255,255,255,0.7)">Searching for "' + query + '"...</div>' +
+    '</div>';
+  
+  fetch('https://world.openfoodfacts.org/cgi/search.pl?search_terms=' + encodeURIComponent(query) + '&search_simple=1&action=process&json=1&page_size=10')
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+      if (data.products && data.products.length > 0) {
+        showSearchResults(data.products, query);
+      } else {
+        document.getElementById('scannerStatus').innerHTML = 
+          '<div style="padding:30px;text-align:center">' +
+          '<div style="font-size:32px;margin-bottom:12px">😕</div>' +
+          '<div style="color:rgba(255,255,255,0.7);margin-bottom:16px">No products found for "' + query + '"</div>' +
+          '<button onclick="showManualEntry()" style="padding:10px 20px;border-radius:8px;border:none;background:#10b981;color:white;font-weight:600">Try Again</button>' +
+          '</div>';
+      }
+    })
+    .catch(function(err) {
+      console.error('Search error:', err);
+      document.getElementById('scannerStatus').innerHTML = 
+        '<div style="padding:30px;text-align:center">' +
+        '<div style="color:#fca5a5;margin-bottom:16px">Network error. Check connection.</div>' +
+        '<button onclick="showManualEntry()" style="padding:10px 20px;border-radius:8px;border:none;background:#10b981;color:white;font-weight:600">Try Again</button>' +
+        '</div>';
+    });
+}
+
+function showSearchResults(products, query) {
+  var html = '<div style="padding:12px;max-height:70vh;overflow-y:auto">' +
+    '<div style="text-align:center;margin-bottom:12px;color:rgba(255,255,255,0.6);font-size:13px">' + products.length + ' results for "' + query + '"</div>';
+  
+  products.forEach(function(product) {
+    var name = product.product_name || 'Unknown Product';
+    var brand = product.brands || '';
+    var image = product.image_front_thumb_url || '';
+    var hasIngredients = product.ingredients_text ? '✓' : '✗';
+    var ingredientColor = product.ingredients_text ? '#86efac' : '#fca5a5';
+    
+    html += '<div onclick="selectProduct(\'' + (product.code || '') + '\')" ' +
+      'style="background:rgba(255,255,255,0.05);border-radius:12px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px;cursor:pointer;border:1px solid rgba(255,255,255,0.1)">' +
+      (image ? '<img src="' + image + '" style="width:50px;height:50px;object-fit:contain;background:white;border-radius:6px">' : 
+               '<div style="width:50px;height:50px;background:rgba(255,255,255,0.1);border-radius:6px;display:flex;align-items:center;justify-content:center">📦</div>') +
+      '<div style="flex:1;min-width:0">' +
+      '<div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</div>' +
+      '<div style="font-size:12px;color:rgba(255,255,255,0.5)">' + brand + '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:' + ingredientColor + '">' + hasIngredients + ' ingredients</div>' +
+      '</div>';
+  });
+  
+  html += '<button onclick="showManualEntry()" style="width:100%;margin-top:8px;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.6);font-size:13px">← Back to Search</button></div>';
+  
+  document.getElementById('scannerStatus').innerHTML = html;
+}
+
+function selectProduct(code) {
+  if (!code) return;
+  handleBarcode(code);
 }
 
 function tryCamera() {
@@ -4834,6 +5219,9 @@ function showProduct(product, code) {
   var image = product.image_front_small_url || product.image_url || '';
   var ingredients = product.ingredients_text || product.ingredients_text_en || '';
   
+  // Save for later display
+  selectedProductData = { name: name, brand: brand, image: image };
+  
   document.getElementById('productName').textContent = name;
   document.getElementById('productBrand').textContent = brand ? 'by ' + brand : 'Barcode: ' + code;
   
@@ -4856,9 +5244,44 @@ function showProduct(product, code) {
 function useScannedIngredients() {
   stopScanner();
   if (scannedIngredients) {
+    // Show selected product at top
+    showSelectedProduct();
     document.getElementById('input').value = scannedIngredients;
     analyze();
   }
+}
+
+var selectedProductData = null;
+
+function showSelectedProduct() {
+  if (!selectedProductData) return;
+  
+  var container = document.getElementById('selectedProduct');
+  var nameEl = document.getElementById('selectedProductName');
+  var brandEl = document.getElementById('selectedProductBrand');
+  var imgEl = document.getElementById('selectedProductImage');
+  var placeholderEl = document.getElementById('selectedProductPlaceholder');
+  
+  nameEl.textContent = selectedProductData.name || 'Unknown Product';
+  brandEl.textContent = selectedProductData.brand || '';
+  
+  if (selectedProductData.image) {
+    imgEl.src = selectedProductData.image;
+    imgEl.style.display = 'block';
+    placeholderEl.style.display = 'none';
+  } else {
+    imgEl.style.display = 'none';
+    placeholderEl.style.display = 'flex';
+  }
+  
+  container.classList.add('active');
+}
+
+function clearSelectedProduct() {
+  selectedProductData = null;
+  document.getElementById('selectedProduct').classList.remove('active');
+  document.getElementById('input').value = '';
+  document.getElementById('results').style.display = 'none';
 }
 
 function scanAgain() {
@@ -4891,7 +5314,7 @@ function stopScanner() {
 
   <div id="scannerModal">
     <div class="scanner-header">
-      <div class="scanner-title">📷 Scan Barcode</div>
+      <div class="scanner-title">🔍 Find Product</div>
       <button class="btn-close" onclick="stopScanner()">✕</button>
     </div>
     <div id="scannerContainer">
