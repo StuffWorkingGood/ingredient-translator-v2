@@ -5182,31 +5182,62 @@ function startBarcodeDetection(video) {
 }
 
 function handleBarcode(code) {
-  if (!code || code.length < 8) return;
+  // Clean up barcode - remove spaces, dashes, only keep numbers
+  code = (code || '').replace(/[^0-9]/g, '');
+  
+  if (!code || code.length < 8) {
+    document.getElementById('scannerStatus').innerHTML = 
+      '<div style="padding:20px;color:#fca5a5">Please enter a valid barcode (at least 8 digits)</div>';
+    return;
+  }
   
   isScanning = false;
   if (scanInterval) clearInterval(scanInterval);
   
-  document.getElementById('scannerStatus').textContent = 'Found: ' + code + ' - Looking up product...';
+  document.getElementById('scannerStatus').innerHTML = 
+    '<div style="padding:30px;text-align:center">' +
+    '<div style="font-size:28px;margin-bottom:12px">🔍</div>' +
+    '<div>Looking up barcode: ' + code + '</div>' +
+    '<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:8px">Searching US & global databases...</div>' +
+    '</div>';
   
-  // Query Open Food Facts API
-  fetch('https://world.openfoodfacts.org/api/v0/product/' + code + '.json')
+  // Try US-specific endpoint first, then fall back to world
+  fetch('https://us.openfoodfacts.org/api/v0/product/' + code + '.json')
     .then(function(response) { return response.json(); })
     .then(function(data) {
+      if (data.status === 1 && data.product && data.product.ingredients_text) {
+        showProduct(data.product, code);
+      } else {
+        // Try world database as fallback
+        return fetch('https://world.openfoodfacts.org/api/v0/product/' + code + '.json')
+          .then(function(response) { return response.json(); });
+      }
+    })
+    .then(function(data) {
+      if (!data) return; // Already handled by US endpoint
       if (data.status === 1 && data.product) {
         showProduct(data.product, code);
       } else {
-        document.getElementById('scannerStatus').textContent = 'Product not found in database. Try another or enter manually.';
-        isScanning = true;
-        if ('BarcodeDetector' in window) {
-          scanInterval = setInterval(function() { /* restart scanning */ }, 200);
-        }
+        document.getElementById('scannerStatus').innerHTML = 
+          '<div style="padding:20px;text-align:center">' +
+          '<div style="font-size:28px;margin-bottom:12px">😕</div>' +
+          '<div style="margin-bottom:8px">Product not found</div>' +
+          '<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">' +
+          'Barcode ' + code + ' isn\'t in the Open Food Facts database yet.<br>' +
+          'Try searching by product name instead!</div>' +
+          '<button onclick="showManualEntry()" style="padding:12px 24px;border-radius:10px;border:none;background:#10b981;color:white;font-weight:600">← Back to Search</button>' +
+          '</div>';
       }
     })
     .catch(function(err) {
       console.error('API error:', err);
-      document.getElementById('scannerStatus').textContent = 'Network error. Check connection and try again.';
-      isScanning = true;
+      document.getElementById('scannerStatus').innerHTML = 
+        '<div style="padding:20px;text-align:center">' +
+        '<div style="font-size:28px;margin-bottom:12px">⚠️</div>' +
+        '<div style="margin-bottom:8px;color:#fca5a5">Connection Error</div>' +
+        '<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">Could not reach database. Check your internet connection.</div>' +
+        '<button onclick="showManualEntry()" style="padding:12px 24px;border-radius:10px;border:none;background:#10b981;color:white;font-weight:600">Try Again</button>' +
+        '</div>';
     });
 }
 
