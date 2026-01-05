@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ingredient Translator</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{min-height:100vh;background:linear-gradient(165deg,#0f0f1a 0%,#1a1a2e 40%,#16213e 70%,#1a1a2e 100%);font-family:'DM Sans',system-ui,sans-serif;color:#E8E8E8;padding:16px;padding-bottom:40px}
@@ -5112,74 +5113,93 @@ function selectProduct(code) {
   handleBarcode(code);
 }
 
+var html5QrCode = null;
+
 function tryCamera() {
-  document.getElementById('scannerStatus').innerHTML = '<div style="padding:20px">Starting camera...</div>';
-  document.getElementById('scannerVideo').style.display = 'block';
-  document.querySelector('.scanner-overlay').style.display = 'block';
-  document.querySelector('.scanner-hint').style.display = 'block';
+  document.getElementById('scannerStatus').innerHTML = '<div style="padding:20px;text-align:center">Starting camera...</div>';
+  document.getElementById('scannerVideo').style.display = 'none';
+  document.querySelector('.scanner-overlay').style.display = 'none';
+  document.querySelector('.scanner-hint').style.display = 'none';
   
-  navigator.mediaDevices.getUserMedia({ 
-    video: { 
-      facingMode: 'environment',
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    } 
-  })
-  .then(function(stream) {
-    scannerStream = stream;
-    var video = document.getElementById('scannerVideo');
-    video.srcObject = stream;
-    video.play();
-    document.getElementById('scannerStatus').textContent = 'Point at barcode...';
-    isScanning = true;
-    startBarcodeDetection(video);
-  })
-  .catch(function(err) {
-    console.error('Camera error:', err);
+  // Create scanner container if it doesn't exist
+  var readerDiv = document.getElementById('barcode-reader');
+  if (!readerDiv) {
+    readerDiv = document.createElement('div');
+    readerDiv.id = 'barcode-reader';
+    readerDiv.style.cssText = 'width:100%;max-width:400px;margin:0 auto;';
+    document.getElementById('scannerContainer').appendChild(readerDiv);
+  }
+  readerDiv.style.display = 'block';
+  
+  // Stop any existing scanner
+  if (html5QrCode) {
+    try { html5QrCode.stop(); } catch(e) {}
+  }
+  
+  html5QrCode = new Html5Qrcode("barcode-reader");
+  
+  var config = {
+    fps: 10,
+    qrbox: { width: 250, height: 150 },
+    formatsToSupport: [ 
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39
+    ]
+  };
+  
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    function(decodedText) {
+      // Success - barcode found!
+      console.log('Barcode detected:', decodedText);
+      html5QrCode.stop().then(function() {
+        readerDiv.style.display = 'none';
+        handleBarcode(decodedText);
+      });
+    },
+    function(errorMessage) {
+      // Ignore scanning errors (happens continuously while searching)
+    }
+  ).then(function() {
     document.getElementById('scannerStatus').innerHTML = 
-      '<div style="padding:20px;color:#fca5a5">' +
-      '❌ Camera not available<br><br>' +
-      '<span style="font-size:13px;color:rgba(255,255,255,0.5)">Camera requires HTTPS or localhost.<br>Use manual entry instead.</span>' +
+      '<div style="padding:10px;text-align:center">' +
+      '<div style="color:#86efac;font-weight:600;margin-bottom:8px">📷 Camera Active</div>' +
+      '<div style="font-size:13px;color:rgba(255,255,255,0.6)">Point at a barcode</div>' +
+      '<button onclick="stopCameraAndGoBack()" style="margin-top:12px;padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.6);font-size:12px">Cancel</button>' +
       '</div>';
-    document.getElementById('scannerVideo').style.display = 'none';
-    document.querySelector('.scanner-overlay').style.display = 'none';
-    document.querySelector('.scanner-hint').style.display = 'none';
-    setTimeout(showManualEntry, 2000);
+  }).catch(function(err) {
+    console.error('Camera error:', err);
+    readerDiv.style.display = 'none';
+    document.getElementById('scannerStatus').innerHTML = 
+      '<div style="padding:20px;text-align:center">' +
+      '<div style="font-size:28px;margin-bottom:12px">📷</div>' +
+      '<div style="color:#fca5a5;margin-bottom:8px">Camera access denied</div>' +
+      '<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">Please allow camera access in your browser settings, or use manual entry.</div>' +
+      '<button onclick="showManualEntry()" style="padding:12px 24px;border-radius:10px;border:none;background:#10b981;color:white;font-weight:600">← Use Manual Entry</button>' +
+      '</div>';
   });
 }
 
-function startBarcodeDetection(video) {
-  // Check if BarcodeDetector API is available (Chrome, Edge, Android)
-  if ('BarcodeDetector' in window) {
-    var barcodeDetector = new BarcodeDetector({
-      formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39']
+function stopCameraAndGoBack() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(function() {
+      var readerDiv = document.getElementById('barcode-reader');
+      if (readerDiv) readerDiv.style.display = 'none';
+      showManualEntry();
+    }).catch(function() {
+      showManualEntry();
     });
-    
-    scanInterval = setInterval(function() {
-      if (!isScanning) return;
-      
-      barcodeDetector.detect(video)
-        .then(function(barcodes) {
-          if (barcodes.length > 0) {
-            var code = barcodes[0].rawValue;
-            console.log('Barcode detected:', code);
-            handleBarcode(code);
-          }
-        })
-        .catch(function(err) {
-          console.error('Detection error:', err);
-        });
-    }, 200);
   } else {
-    // Fallback: manual entry for browsers without BarcodeDetector
-    document.getElementById('scannerStatus').innerHTML = 
-      'Auto-scan not supported in this browser.<br>' +
-      '<input type="text" id="manualBarcode" placeholder="Enter barcode number" ' +
-      'style="margin-top:10px;padding:12px;border-radius:8px;border:none;width:200px;font-size:16px;text-align:center">' +
-      '<br><button onclick="handleBarcode(document.getElementById(\'manualBarcode\').value)" ' +
-      'style="margin-top:10px;padding:10px 20px;border-radius:8px;border:none;background:#10b981;color:white;font-weight:600">Look Up</button>';
+    showManualEntry();
   }
 }
+
+
 
 function handleBarcode(code) {
   // Clean up barcode - remove spaces, dashes, only keep numbers
@@ -5338,6 +5358,11 @@ function stopScanner() {
     scannerStream.getTracks().forEach(function(track) { track.stop(); });
     scannerStream = null;
   }
+  if (html5QrCode) {
+    try { html5QrCode.stop(); } catch(e) {}
+  }
+  var readerDiv = document.getElementById('barcode-reader');
+  if (readerDiv) readerDiv.style.display = 'none';
   document.getElementById('scannerModal').classList.remove('active');
   document.getElementById('productInfo').classList.remove('active');
 }
