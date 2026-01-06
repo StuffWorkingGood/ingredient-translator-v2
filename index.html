@@ -5062,7 +5062,7 @@ function searchProduct() {
     '<div style="color:rgba(255,255,255,0.7)">Searching for "' + query + '"...</div>' +
     '</div>';
   
-  fetch('https://world.openfoodfacts.org/cgi/search.pl?search_terms=' + encodeURIComponent(query) + '&search_simple=1&action=process&json=1&page_size=10')
+  fetch('https://world.openfoodfacts.org/cgi/search.pl?search_terms=' + encodeURIComponent(query) + '&search_simple=1&action=process&json=1&page_size=10&countries_tags_en=united-states')
     .then(function(response) { return response.json(); })
     .then(function(data) {
       if (data.products && data.products.length > 0) {
@@ -5241,23 +5241,23 @@ function handleBarcode(code) {
     '<div style="padding:30px;text-align:center">' +
     '<div style="font-size:28px;margin-bottom:12px">🔍</div>' +
     '<div>Looking up barcode: ' + code + '</div>' +
-    '<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:8px">Searching US & global databases...</div>' +
+    '<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:8px">Searching database...</div>' +
     '</div>';
   
-  // Try US-specific endpoint first, then fall back to world
-  fetch('https://us.openfoodfacts.org/api/v0/product/' + code + '.json')
-    .then(function(response) { return response.json(); })
-    .then(function(data) {
-      if (data.status === 1 && data.product && data.product.ingredients_text) {
-        showProduct(data.product, code);
-      } else {
-        // Try world database as fallback
-        return fetch('https://world.openfoodfacts.org/api/v0/product/' + code + '.json')
-          .then(function(response) { return response.json(); });
+  // Use world.openfoodfacts.org (most reliable, has CORS headers)
+  fetch('https://world.openfoodfacts.org/api/v2/product/' + code + '.json', {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json'
+    }
+  })
+    .then(function(response) { 
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
       }
+      return response.json(); 
     })
     .then(function(data) {
-      if (!data) return; // Already handled by US endpoint
       if (data.status === 1 && data.product) {
         showProduct(data.product, code);
       } else {
@@ -5266,7 +5266,7 @@ function handleBarcode(code) {
           '<div style="font-size:28px;margin-bottom:12px">😕</div>' +
           '<div style="margin-bottom:8px">Product not found</div>' +
           '<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">' +
-          'Barcode ' + code + ' isn\'t in the Open Food Facts database yet.<br>' +
+          'Barcode ' + code + ' isn\'t in the database yet.<br>' +
           'Try searching by product name instead!</div>' +
           '<button onclick="showManualEntry()" style="padding:12px 24px;border-radius:10px;border:none;background:#10b981;color:white;font-weight:600">← Back to Search</button>' +
           '</div>';
@@ -5274,12 +5274,14 @@ function handleBarcode(code) {
     })
     .catch(function(err) {
       console.error('API error:', err);
+      // Show error with option to search by name instead
       document.getElementById('scannerStatus').innerHTML = 
         '<div style="padding:20px;text-align:center">' +
         '<div style="font-size:28px;margin-bottom:12px">⚠️</div>' +
-        '<div style="margin-bottom:8px;color:#fca5a5">Connection Error</div>' +
-        '<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">Could not reach database. Check your internet connection.</div>' +
-        '<button onclick="showManualEntry()" style="padding:12px 24px;border-radius:10px;border:none;background:#10b981;color:white;font-weight:600">Try Again</button>' +
+        '<div style="margin-bottom:8px;color:#fca5a5">Could not look up barcode</div>' +
+        '<div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px">' +
+        'Barcode: ' + code + '<br>Try searching by product name instead.</div>' +
+        '<button onclick="showManualEntry()" style="padding:12px 24px;border-radius:10px;border:none;background:#10b981;color:white;font-weight:600">← Search by Name</button>' +
         '</div>';
     });
 }
